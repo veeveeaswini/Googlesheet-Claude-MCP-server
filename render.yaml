@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: tally-sheets-mcp
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: TRANSPORT=http python server.py
+    envVars:
+      - key: TALLY_WEBAPP_URL
+        sync: false        # set this in the Render dashboard (secret)
+      - key: TALLY_WEBAPP_KEY
+        sync: false        # set this in the Render dashboard (secret)
