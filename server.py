@@ -456,6 +456,40 @@ if __name__ == "__main__":
         port = int(os.environ.get("PORT", "8000"))
         mcp.settings.host = "0.0.0.0"
         mcp.settings.port = port
+
+        # Behind a host like Render/Railway, incoming requests carry the
+        # platform's public domain in the Host header. FastMCP's DNS-rebinding
+        # protection rejects anything not in allowed_hosts ("Invalid Host
+        # header"). Allow the platform host(s) here.
+        #
+        # Set ALLOWED_HOSTS in the host dashboard to your domain, e.g.
+        #   ALLOWED_HOSTS=googlesheet-claude-mcp-server.onrender.com
+        # Comma-separate multiple hosts. If unset, we allow all (*), which is
+        # convenient but less strict — set it explicitly for tighter security.
+        from mcp.server.transport_security import TransportSecuritySettings
+
+        allowed_env = os.environ.get("ALLOWED_HOSTS", "").strip()
+        if allowed_env:
+            hosts: list[str] = []
+            origins: list[str] = []
+            for h in [x.strip() for x in allowed_env.split(",") if x.strip()]:
+                hosts.append(h)
+                hosts.append(f"{h}:*")
+                origins.append(f"https://{h}")
+                origins.append(f"https://{h}:*")
+            mcp.settings.transport_security = TransportSecuritySettings(
+                enable_dns_rebinding_protection=True,
+                allowed_hosts=hosts,
+                allowed_origins=origins,
+            )
+        else:
+            # No explicit list -> disable the host check (accept any host).
+            mcp.settings.transport_security = TransportSecuritySettings(
+                enable_dns_rebinding_protection=False,
+                allowed_hosts=["*"],
+                allowed_origins=["*"],
+            )
+
         mcp.run(transport="streamable-http")
     else:
         mcp.run()
